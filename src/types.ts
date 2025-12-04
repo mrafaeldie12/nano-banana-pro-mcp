@@ -52,3 +52,9 @@ export interface GeneratedImage {
   base64Data: string;
   description?: string;
 }
+
+export interface DescribeImageOptions {
+  images: ImageInput[];
+  prompt?: string;  // optional custom prompt for analysis
+  model?: string;
+}

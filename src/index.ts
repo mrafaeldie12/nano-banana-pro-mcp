@@ -48,6 +48,21 @@ const editImageSchema = z.object({
     .describe("Gemini model to use (default: gemini-3-pro-image-preview)"),
 });
 
+const describeImageSchema = z.object({
+  images: z
+    .array(imageInputSchema)
+    .min(1)
+    .describe("One or more images to describe/analyze"),
+  prompt: z
+    .string()
+    .optional()
+    .describe("Optional custom prompt for analysis (default: general description)"),
+  model: z
+    .string()
+    .optional()
+    .describe("Gemini model to use (default: gemini-3-pro-image-preview)"),
+});
+
 export function createServer(apiKey: string): Server {
   const client = new GeminiImageClient(apiKey);
 
@@ -145,6 +160,40 @@ export function createServer(apiKey: string): Server {
             required: ["prompt", "images"],
           },
         },
+        {
+          name: "describe_image",
+          description:
+            "Analyze and describe one or more images using Google Gemini. Returns a text description of the image contents.",
+          inputSchema: {
+            type: "object" as const,
+            properties: {
+              images: {
+                type: "array",
+                description: "One or more images to describe/analyze",
+                items: {
+                  type: "object",
+                  properties: {
+                    data: { type: "string", description: "Base64 encoded image data" },
+                    mimeType: { type: "string", description: "MIME type (e.g., image/png)" },
+                  },
+                  required: ["data", "mimeType"],
+                },
+                minItems: 1,
+              },
+              prompt: {
+                type: "string",
+                description: "Optional custom prompt for analysis (default: general description)",
+              },
+              model: {
+                type: "string",
+                description:
+                  "Gemini model (gemini-3-pro-image-preview, gemini-2.5-flash-preview-05-20, or gemini-2.0-flash-exp)",
+                default: "gemini-3-pro-image-preview",
+              },
+            },
+            required: ["images"],
+          },
+        },
       ],
     };
   });
@@ -212,6 +261,38 @@ export function createServer(apiKey: string): Server {
             {
               type: "text" as const,
               text: `Failed to edit image: ${message}`,
+            },
+          ],
+        };
+      }
+    }
+
+    if (request.params.name === "describe_image") {
+      try {
+        const args = describeImageSchema.parse(request.params.arguments);
+        const description = await client.describeImage({
+          images: args.images,
+          prompt: args.prompt,
+          model: args.model,
+        });
+
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: description,
+            },
+          ],
+        };
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unknown error occurred";
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text" as const,
+              text: `Failed to describe image: ${message}`,
             },
           ],
         };

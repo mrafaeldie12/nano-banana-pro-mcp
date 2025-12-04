@@ -155,6 +155,27 @@ Remove the background from this image
 Combine these two images into one scene
 ```
 
+### describe_image
+
+Analyze and describe one or more images. Returns text only (no image generation).
+
+**Parameters:**
+- `images` (required): Array of images to analyze
+  - Each image: `{ data: "base64...", mimeType: "image/png" }`
+- `prompt` (optional): Custom analysis prompt (default: general description)
+- `model` (optional): Gemini model to use (default: `gemini-3-pro-image-preview`)
+
+**Example prompts:**
+```
+[default] Describe this image in detail
+
+What objects are in this image?
+
+How many people are in this photo?
+
+What's the dominant color in this image?
+```
+
 ---
 
 ## Development

@@ -33,17 +33,20 @@ describe("MCP Server", () => {
   }
 
   describe("listTools", () => {
-    it("should list generate_image and edit_image tools", async () => {
+    it("should list all three image tools", async () => {
       const { client } = await createTestClient();
       const result = await client.listTools();
 
-      expect(result.tools).toHaveLength(2);
+      expect(result.tools).toHaveLength(3);
       expect(result.tools[0].name).toBe("generate_image");
       expect(result.tools[0].description).toContain("Google Gemini");
       expect(result.tools[0].inputSchema.required).toContain("prompt");
       expect(result.tools[1].name).toBe("edit_image");
       expect(result.tools[1].description).toContain("Edit");
       expect(result.tools[1].inputSchema.required).toContain("images");
+      expect(result.tools[2].name).toBe("describe_image");
+      expect(result.tools[2].description).toContain("Analyze");
+      expect(result.tools[2].inputSchema.required).toContain("images");
     });
 
     it("should have correct input schema for generate_image", async () => {
@@ -407,6 +410,115 @@ describe("MCP Server", () => {
       expect(result.content[0]).toMatchObject({
         type: "text",
         text: expect.stringContaining("Failed to edit image"),
+      });
+    });
+  });
+
+  describe("callTool - describe_image", () => {
+    it("should describe image successfully", async () => {
+      const mockResponse = {
+        candidates: [
+          {
+            content: {
+              parts: [{ text: "A cute orange crab holding a banana phone" }],
+            },
+          },
+        ],
+      };
+
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      } as Response);
+
+      const { client } = await createTestClient();
+      const result = await client.callTool({
+        name: "describe_image",
+        arguments: {
+          images: [{ data: VALID_BASE64_PNG, mimeType: "image/png" }],
+        },
+      });
+
+      expect(result.isError).toBeFalsy();
+      expect(result.content).toHaveLength(1);
+      expect(result.content[0]).toEqual({
+        type: "text",
+        text: "A cute orange crab holding a banana phone",
+      });
+    });
+
+    it("should describe image with custom prompt", async () => {
+      const mockResponse = {
+        candidates: [
+          {
+            content: {
+              parts: [{ text: "There are 3 objects" }],
+            },
+          },
+        ],
+      };
+
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      } as Response);
+
+      const { client } = await createTestClient();
+      const result = await client.callTool({
+        name: "describe_image",
+        arguments: {
+          images: [{ data: VALID_BASE64_PNG, mimeType: "image/png" }],
+          prompt: "How many objects are in this image?",
+        },
+      });
+
+      expect(result.isError).toBeFalsy();
+      expect(result.content[0]).toMatchObject({
+        type: "text",
+        text: "There are 3 objects",
+      });
+
+      // Verify custom prompt was sent
+      const callArgs = vi.mocked(fetch).mock.calls[0];
+      const body = JSON.parse(callArgs[1]?.body as string);
+      expect(body.contents[0].parts[0].text).toBe("How many objects are in this image?");
+    });
+
+    it("should return error when no images provided", async () => {
+      const { client } = await createTestClient();
+      const result = await client.callTool({
+        name: "describe_image",
+        arguments: {
+          images: [],
+        },
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]).toMatchObject({
+        type: "text",
+        text: expect.stringContaining("Failed to describe image"),
+      });
+    });
+
+    it("should return error on API failure", async () => {
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        text: () => Promise.resolve("Internal Server Error"),
+      } as Response);
+
+      const { client } = await createTestClient();
+      const result = await client.callTool({
+        name: "describe_image",
+        arguments: {
+          images: [{ data: VALID_BASE64_PNG, mimeType: "image/png" }],
+        },
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]).toMatchObject({
+        type: "text",
+        text: expect.stringContaining("Failed to describe image"),
       });
     });
   });
