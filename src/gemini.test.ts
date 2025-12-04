@@ -143,6 +143,17 @@ describe("GeminiImageClient", () => {
       expect(body.generationConfig.imageConfig).toBeUndefined();
     });
 
+    it("should reject invalid model names", async () => {
+      const client = new GeminiImageClient(mockApiKey);
+
+      await expect(
+        client.generateImage({
+          prompt: "test",
+          model: "../../malicious-path",
+        })
+      ).rejects.toThrow("Invalid model");
+    });
+
     it("should throw error on API failure", async () => {
       vi.mocked(fetch).mockResolvedValueOnce({
         ok: false,

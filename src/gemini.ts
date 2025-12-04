@@ -7,10 +7,13 @@ import type {
 
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
-// Available models for image generation:
-// - gemini-2.0-flash-exp: Widely available, good quality
-// - gemini-2.5-flash-preview-05-20: Nano Banana (fast)
-// - gemini-3-pro-image-preview: Nano Banana Pro (highest quality)
+// Allowed models for image generation
+const ALLOWED_MODELS = [
+  "gemini-3-pro-image-preview",    // Nano Banana Pro (highest quality)
+  "gemini-2.5-flash-preview-05-20", // Nano Banana (fast)
+  "gemini-2.0-flash-exp",           // Widely available fallback
+] as const;
+
 const DEFAULT_MODEL = "gemini-3-pro-image-preview";
 
 export class GeminiImageClient {
@@ -26,6 +29,13 @@ export class GeminiImageClient {
   async generateImage(options: GenerateImageOptions): Promise<GeneratedImage> {
     const { prompt, aspectRatio, imageSize } = options;
     const model = options.model || DEFAULT_MODEL;
+
+    // Validate model against allowlist to prevent URL manipulation
+    if (!ALLOWED_MODELS.includes(model as typeof ALLOWED_MODELS[number])) {
+      throw new Error(
+        `Invalid model: ${model}. Allowed: ${ALLOWED_MODELS.join(", ")}`
+      );
+    }
 
     // Only certain models support imageConfig (aspect ratio, size)
     const supportsImageConfig = model.includes("image") || model.includes("imagen");
