@@ -2,7 +2,15 @@
 
 MCP server that enables AI agents like Claude to generate images using Google's Gemini 3 Nano Banana Pro image generation model.
 
-## Installation
+## Quick Install (Claude Desktop)
+
+```bash
+claude mcp add nano-banana-pro -- npx @rafarafarafa/nano-banana-pro-mcp
+```
+
+Then set your API key in Claude Desktop's MCP settings.
+
+## Manual Installation
 
 ```bash
 npm install

@@ -1,11 +1,21 @@
 {
-  "name": "nano-banana-pro-mcp",
+  "name": "@rafarafarafa/nano-banana-pro-mcp",
   "version": "1.0.0",
   "description": "MCP server for Gemini 3 Nano Banana Pro image generation",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
     "nano-banana-pro-mcp": "dist/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mrafaeldie12/nano-banana-pro-mcp.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsc",
