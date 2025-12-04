@@ -6,6 +6,8 @@
 
 MCP server that enables AI agents like Claude to generate images using Google's Gemini image generation models (including Nano Banana Pro - gemini-3-pro-image-preview).
 
+> **Note:** I thought it was cool that Google Antigravity could generate images using nanobanana so I stole the idea.
+
 ## Example
 
 Here's Claude Code using the MCP to generate a hero image for a travel landing page:
