@@ -25,27 +25,10 @@ And the beautiful result:
 ### Claude Code CLI
 
 ```bash
-claude mcp add nano-banana-pro -- npx @rafarafarafa/nano-banana-pro-mcp
+claude mcp add nano-banana-pro --env GEMINI_API_KEY=your_api_key_here -- npx @rafarafarafa/nano-banana-pro-mcp
 ```
 
-Then add your API key to the MCP config. Open `~/.claude.json` and find the `nano-banana-pro` server entry, then add your key:
-
-```json
-{
-  "mcpServers": {
-    "nano-banana-pro": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["@rafarafarafa/nano-banana-pro-mcp"],
-      "env": {
-        "GEMINI_API_KEY": "your_api_key_here"
-      }
-    }
-  }
-}
-```
-
-> **Note**: Environment variables from your shell (like `export GEMINI_API_KEY=...`) are NOT passed to MCP servers. You must add the key directly in the JSON config.
+Replace `your_api_key_here` with your actual Gemini API key.
 
 ### Claude Desktop
 
