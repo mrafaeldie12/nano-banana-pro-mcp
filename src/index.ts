@@ -7,7 +7,26 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import { writeFile, mkdir } from "fs/promises";
+import { dirname, resolve } from "path";
 import { GeminiImageClient } from "./gemini.js";
+
+async function saveImageToFile(
+  base64Data: string,
+  outputPath: string
+): Promise<string> {
+  const absolutePath = resolve(outputPath);
+  const dir = dirname(absolutePath);
+
+  // Ensure directory exists
+  await mkdir(dir, { recursive: true });
+
+  // Decode base64 and write to file
+  const buffer = Buffer.from(base64Data, "base64");
+  await writeFile(absolutePath, buffer);
+
+  return absolutePath;
+}
 
 const imageInputSchema = z.object({
   data: z.string().describe("Base64 encoded image data"),
@@ -34,6 +53,10 @@ const generateImageSchema = z.object({
     .array(imageInputSchema)
     .optional()
     .describe("Optional reference images to guide generation"),
+  outputPath: z
+    .string()
+    .optional()
+    .describe("Optional file path to save the generated image (e.g., /path/to/image.png)"),
 });
 
 const editImageSchema = z.object({
@@ -46,6 +69,10 @@ const editImageSchema = z.object({
     .string()
     .optional()
     .describe("Gemini model to use (default: gemini-3-pro-image-preview)"),
+  outputPath: z
+    .string()
+    .optional()
+    .describe("Optional file path to save the edited image (e.g., /path/to/image.png)"),
 });
 
 const describeImageSchema = z.object({
@@ -122,6 +149,10 @@ export function createServer(apiKey: string): Server {
                   required: ["data", "mimeType"],
                 },
               },
+              outputPath: {
+                type: "string",
+                description: "Optional file path to save the generated image (e.g., /path/to/image.png)",
+              },
             },
             required: ["prompt"],
           },
@@ -155,6 +186,10 @@ export function createServer(apiKey: string): Server {
                 description:
                   "Gemini model (gemini-3-pro-image-preview, gemini-2.5-flash-preview-05-20, or gemini-2.0-flash-exp)",
                 default: "gemini-3-pro-image-preview",
+              },
+              outputPath: {
+                type: "string",
+                description: "Optional file path to save the edited image (e.g., /path/to/image.png)",
               },
             },
             required: ["prompt", "images"],
@@ -204,6 +239,12 @@ export function createServer(apiKey: string): Server {
         const args = generateImageSchema.parse(request.params.arguments);
         const result = await client.generateImage(args);
 
+        // Save to file if outputPath is provided
+        let savedPath: string | undefined;
+        if (args.outputPath) {
+          savedPath = await saveImageToFile(result.base64Data, args.outputPath);
+        }
+
         return {
           content: [
             {
@@ -211,6 +252,9 @@ export function createServer(apiKey: string): Server {
               data: result.base64Data,
               mimeType: result.mimeType,
             },
+            ...(savedPath
+              ? [{ type: "text" as const, text: `Image saved to: ${savedPath}` }]
+              : []),
             ...(result.description
               ? [{ type: "text" as const, text: result.description }]
               : []),
@@ -240,6 +284,12 @@ export function createServer(apiKey: string): Server {
           model: args.model,
         });
 
+        // Save to file if outputPath is provided
+        let savedPath: string | undefined;
+        if (args.outputPath) {
+          savedPath = await saveImageToFile(result.base64Data, args.outputPath);
+        }
+
         return {
           content: [
             {
@@ -247,6 +297,9 @@ export function createServer(apiKey: string): Server {
               data: result.base64Data,
               mimeType: result.mimeType,
             },
+            ...(savedPath
+              ? [{ type: "text" as const, text: `Image saved to: ${savedPath}` }]
+              : []),
             ...(result.description
               ? [{ type: "text" as const, text: result.description }]
               : []),

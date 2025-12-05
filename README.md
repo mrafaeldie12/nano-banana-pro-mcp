@@ -111,12 +111,15 @@ Generate an image from a text prompt. Optionally provide reference images to gui
 - `imageSize` (optional): `"1K"` | `"2K"` | `"4K"` (only for image-specific models)
 - `images` (optional): Array of reference images to guide generation
   - Each image: `{ data: "base64...", mimeType: "image/png" }`
+- `outputPath` (optional): File path to save the generated image (e.g., `/path/to/image.png`)
 
 **Example prompts:**
 ```
 Generate an image of a sunset over mountains
 
 Generate a logo in the style of this reference image [with image attached]
+
+Generate a hero image and save it to ./assets/hero.png
 ```
 
 ### edit_image
@@ -128,6 +131,7 @@ Edit one or more images based on instructions.
 - `images` (required): Array of images to edit
   - Each image: `{ data: "base64...", mimeType: "image/png" }`
 - `model` (optional): Gemini model to use (default: `gemini-3-pro-image-preview`)
+- `outputPath` (optional): File path to save the edited image (e.g., `/path/to/image.png`)
 
 **Example prompts:**
 ```

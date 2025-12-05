@@ -3,6 +3,14 @@ import { createServer } from "./index.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 
+// Mock fs/promises
+vi.mock("fs/promises", () => ({
+  writeFile: vi.fn().mockResolvedValue(undefined),
+  mkdir: vi.fn().mockResolvedValue(undefined),
+}));
+
+import { writeFile, mkdir } from "fs/promises";
+
 // Valid base64 string for testing (1x1 transparent PNG)
 const VALID_BASE64_PNG =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
@@ -12,6 +20,8 @@ describe("MCP Server", () => {
 
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
+    vi.mocked(writeFile).mockClear();
+    vi.mocked(mkdir).mockClear();
   });
 
   afterEach(() => {
@@ -233,6 +243,90 @@ describe("MCP Server", () => {
         text: expect.stringContaining("Failed to generate image"),
       });
     });
+
+    it("should save image to file when outputPath is provided", async () => {
+      const mockResponse = {
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  inlineData: {
+                    mimeType: "image/png",
+                    data: VALID_BASE64_PNG,
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      };
+
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      } as Response);
+
+      const { client } = await createTestClient();
+      const result = await client.callTool({
+        name: "generate_image",
+        arguments: {
+          prompt: "a test image",
+          outputPath: "/tmp/test-output/image.png",
+        },
+      });
+
+      expect(result.isError).toBeFalsy();
+      expect(vi.mocked(mkdir)).toHaveBeenCalledWith("/tmp/test-output", { recursive: true });
+      expect(vi.mocked(writeFile)).toHaveBeenCalledWith(
+        "/tmp/test-output/image.png",
+        expect.any(Buffer)
+      );
+      // Should include both image and save confirmation
+      expect(result.content).toHaveLength(2);
+      expect(result.content[0]).toEqual({
+        type: "image",
+        data: VALID_BASE64_PNG,
+        mimeType: "image/png",
+      });
+      expect(result.content[1]).toEqual({
+        type: "text",
+        text: "Image saved to: /tmp/test-output/image.png",
+      });
+    });
+
+    it("should not save file when outputPath is not provided", async () => {
+      const mockResponse = {
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  inlineData: {
+                    mimeType: "image/png",
+                    data: VALID_BASE64_PNG,
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      };
+
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      } as Response);
+
+      const { client } = await createTestClient();
+      await client.callTool({
+        name: "generate_image",
+        arguments: { prompt: "a test image" },
+      });
+
+      expect(vi.mocked(writeFile)).not.toHaveBeenCalled();
+      expect(vi.mocked(mkdir)).not.toHaveBeenCalled();
+    });
   });
 
   describe("callTool - generate_image with reference images", () => {
@@ -410,6 +504,52 @@ describe("MCP Server", () => {
       expect(result.content[0]).toMatchObject({
         type: "text",
         text: expect.stringContaining("Failed to edit image"),
+      });
+    });
+
+    it("should save edited image to file when outputPath is provided", async () => {
+      const mockResponse = {
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  inlineData: {
+                    mimeType: "image/png",
+                    data: VALID_BASE64_PNG,
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      };
+
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      } as Response);
+
+      const { client } = await createTestClient();
+      const result = await client.callTool({
+        name: "edit_image",
+        arguments: {
+          prompt: "Add a hat",
+          images: [{ data: VALID_BASE64_PNG, mimeType: "image/png" }],
+          outputPath: "/tmp/edited-image.png",
+        },
+      });
+
+      expect(result.isError).toBeFalsy();
+      expect(vi.mocked(mkdir)).toHaveBeenCalledWith("/tmp", { recursive: true });
+      expect(vi.mocked(writeFile)).toHaveBeenCalledWith(
+        "/tmp/edited-image.png",
+        expect.any(Buffer)
+      );
+      expect(result.content).toHaveLength(2);
+      expect(result.content[1]).toEqual({
+        type: "text",
+        text: "Image saved to: /tmp/edited-image.png",
       });
     });
   });
